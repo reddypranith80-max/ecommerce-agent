@@ -1,0 +1,30 @@
+{
+  "name": "storefront-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Full-stack e-commerce demo: React storefront + admin dashboard, Express/MongoDB API, DemoPay virtual payment gateway.",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "start": "concurrently -k -n db,api,web -c gray,cyan,magenta \"npm:db\" \"npm:api\" \"npm:web\"",
+    "db": "npm run db -w @shop/server",
+    "api": "npm run dev -w @shop/server",
+    "web": "npm run dev -w @shop/client",
+    "seed": "npm run seed -w @shop/server",
+    "test": "npm run test -w @shop/shared && npm run test -w @shop/server",
+    "typecheck": "tsc -p shared --noEmit && tsc -p server --noEmit && tsc -p client --noEmit",
+    "build": "npm run build -w @shop/client"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.5",
+    "playwright-core": "^1.64.1",
+    "typescript": "^5.9.3"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}

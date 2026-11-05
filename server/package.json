@@ -1,0 +1,42 @@
+{
+  "name": "@shop/server",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch --clear-screen=false src/index.ts",
+    "start": "tsx src/index.ts",
+    "db": "tsx scripts/local-db.ts",
+    "seed": "tsx src/scripts/seed.ts",
+    "create-admin": "tsx src/scripts/createAdmin.ts",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@shop/shared": "*",
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "express": "^5.3.0",
+    "express-rate-limit": "^7.5.1",
+    "helmet": "^8.3.0",
+    "jose": "^6.2.15",
+    "mongoose": "^8.24.8",
+    "multer": "^2.5.0",
+    "pino": "^9.14.0",
+    "pino-http": "^10.5.0",
+    "sharp": "^0.34.5",
+    "zod": "^4.6.7"
+  },
+  "devDependencies": {
+    "@types/cookie-parser": "^1.4.10",
+    "@types/express": "^5.0.6",
+    "@types/multer": "^2.3.0",
+    "@types/node": "^24.19.2",
+    "@types/supertest": "^6.0.3",
+    "mongodb-memory-server": "^10.4.3",
+    "pino-pretty": "^13.2.0",
+    "supertest": "^7.3.1",
+    "tsx": "^4.23.15",
+    "vitest": "^3.2.7"
+  }
+}
