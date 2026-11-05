@@ -40,7 +40,15 @@ function watch(page, label) {
   });
 }
 
-const shot = (page, name) => page.screenshot({ path: path.join(OUT, `${name}.png`), fullPage: false });
+/** Dismisses any toast so screenshots show the page itself. */
+async function clearToasts(page) {
+  for (const btn of await page.getByRole('button', { name: 'Dismiss' }).all()) await btn.click().catch(() => {});
+}
+const shot = async (page, name, { keepToasts = false } = {}) => {
+  if (!keepToasts) await clearToasts(page);
+  await page.waitForTimeout(250);
+  await page.screenshot({ path: path.join(OUT, `${name}.png`), fullPage: false });
+};
 
 const browser = await chromium.launch({ channel: 'msedge', headless: true });
 try {
@@ -53,7 +61,7 @@ try {
     await page.goto(BASE);
     await page.getByRole('heading', { name: 'Featured' }).waitFor();
     await page.getByRole('heading', { name: 'Shop by category' }).waitFor();
-    await shot(page, '01-home');
+    await shot(page, 'home');
   });
 
   await step('Search, filter and sort the catalog', async () => {
@@ -63,7 +71,7 @@ try {
     await page.goto(`${BASE}/c/footwear?inStock=true`);
     await page.getByRole('heading', { name: 'Footwear' }).waitFor();
     await page.locator('a[href^="/p/"]').first().waitFor();
-    await shot(page, '02-listing');
+    await shot(page, 'listing');
   });
 
   await step('Product page: pick a variant and add to the guest cart', async () => {
@@ -73,14 +81,14 @@ try {
     await page.getByRole('button', { name: 'Black', exact: true }).click();
     await page.getByRole('button', { name: 'Add to cart' }).click();
     await page.getByText(/Added 1 × Classic Cotton Tee/).waitFor();
-    await shot(page, '03-product');
+    await shot(page, 'product', { keepToasts: true });
   });
 
   await step('Guest cart is priced by the server', async () => {
     await page.goto(`${BASE}/cart`);
     await page.getByRole('heading', { name: 'Your cart' }).waitFor();
     await page.getByText('Classic Cotton Tee').first().waitFor();
-    await shot(page, '04-guest-cart');
+    await shot(page, 'cart');
   });
 
   await step('Sign in with the demo customer; guest cart merges into the account', async () => {
@@ -114,15 +122,15 @@ try {
       const b = [...document.querySelectorAll('button')].find((x) => x.textContent?.includes('Continue to payment'));
       return b && !b.disabled;
     });
-    await shot(page, '05-checkout');
+    await shot(page, 'checkout');
     await cta.click();
     await page.getByRole('heading', { name: 'Complete your payment' }).waitFor();
-    await shot(page, '06-demopay');
+    await shot(page, 'demopay');
     await page.getByRole('button', { name: /^Pay ₹/ }).click();
     await page.waitForURL(/\/orders\/ORD-.*placed=1/, { timeout: 20_000 });
     await page.getByText('Thank you! Your order is confirmed.').waitFor();
     onlineOrder = page.url().match(/ORD-[0-9A-Z-]+/)[0];
-    await shot(page, '07-order-confirmed');
+    await shot(page, 'order-confirmed');
   });
 
   let codOrder = '';
@@ -150,9 +158,12 @@ try {
     await page.goto(`${BASE}/orders`);
     await page.getByText(onlineOrder).waitFor();
     await page.getByText(codOrder).waitFor();
-    await shot(page, '08-order-history');
+    await shot(page, 'order-history');
     await page.goto(`${BASE}/demo/inbox`);
     await page.getByText(`Order ${codOrder} confirmed`).waitFor();
+    await page.getByText(`Order ${codOrder} confirmed`).click();
+    await page.getByText('Track it:').waitFor();
+    await shot(page, 'demo-inbox');
   });
 
   // ---------------------------------------------------------------- admin
@@ -167,7 +178,11 @@ try {
     await admin.waitForURL(/\/admin$/);
     await admin.getByText('Gross sales by day').waitFor();
     await admin.getByText('Latest orders').waitFor();
-    await shot(admin, '09-admin-dashboard');
+    await admin.waitForTimeout(600);
+    await shot(admin, 'admin-dashboard');
+    await admin.goto(`${BASE}/admin/orders`);
+    await admin.locator('tbody tr').first().waitFor();
+    await shot(admin, 'admin-orders');
   });
 
   await step('Admin processes and ships the COD order', async () => {
@@ -178,25 +193,31 @@ try {
     await admin.getByLabel('Tracking number').fill('DLV123456789');
     await admin.getByRole('dialog').getByRole('button', { name: 'Mark shipped' }).click();
     await admin.getByRole('button', { name: 'Mark delivered' }).waitFor();
-    await shot(admin, '10-admin-order');
+    await shot(admin, 'admin-order');
   });
 
   await step('Admin inventory, products and reports pages load', async () => {
     await admin.goto(`${BASE}/admin/inventory?lowStock=true`);
     await admin.getByRole('heading', { name: 'Inventory' }).waitFor();
     await admin.locator('tbody tr').first().waitFor();
-    await shot(admin, '11-admin-inventory');
+    await shot(admin, 'admin-inventory');
     await admin.goto(`${BASE}/admin/products/new`);
     await admin.getByRole('heading', { name: 'New product' }).waitFor();
+    await admin.goto(`${BASE}/admin/products?q=Classic%20Cotton`);
+    await admin.getByRole('link', { name: 'Classic Cotton Tee', exact: true }).click();
+    await admin.getByText('Options & variants').waitFor();
+    await admin.locator('table input[aria-label="Price"]').first().waitFor();
+    await shot(admin, 'admin-product');
     await admin.goto(`${BASE}/admin/reports`);
     await admin.getByRole('heading', { name: 'Sales report' }).waitFor();
     await admin.locator('tbody tr').first().waitFor();
+    await shot(admin, 'admin-reports');
   });
 
   await step('Customer sees the shipment with its tracking number', async () => {
     await page.goto(`${BASE}/orders/${codOrder}`);
     await page.getByText('DLV123456789').waitFor();
-    await shot(page, '12-customer-tracking');
+    await shot(page, 'order-tracking');
   });
 
   // ---------------------------------------------------------------- phone layout
@@ -208,13 +229,13 @@ try {
     await m.getByRole('heading', { name: 'Featured' }).waitFor();
     const overflow = await m.evaluate(() => document.documentElement.scrollWidth - window.innerWidth);
     if (overflow > 1) throw new Error(`Horizontal overflow of ${overflow}px on phone`);
-    await shot(m, '13-phone-home');
+    await shot(m, 'phone-home');
     await m.getByRole('button', { name: 'Open menu' }).click();
     await m.getByRole('dialog', { name: 'Menu' }).waitFor();
-    await shot(m, '14-phone-menu');
+    await shot(m, 'phone-menu');
     await m.goto(`${BASE}/p/linen-summer-shirt`);
     await m.getByRole('heading', { name: 'Linen Summer Shirt' }).waitFor();
-    await shot(m, '15-phone-product');
+    await shot(m, 'phone-product');
   });
 } finally {
   await browser.close();

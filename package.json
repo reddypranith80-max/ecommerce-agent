@@ -11,6 +11,7 @@
   ],
   "scripts": {
     "start": "concurrently -k -n db,api,web -c gray,cyan,magenta \"npm:db\" \"npm:api\" \"npm:web\"",
+    "start:lan": "concurrently -k -n db,api,web -c gray,cyan,magenta \"npm:db\" \"npm:api\" \"npm run dev -w @shop/client -- --host\"",
     "db": "npm run db -w @shop/server",
     "api": "npm run dev -w @shop/server",
     "web": "npm run dev -w @shop/client",
